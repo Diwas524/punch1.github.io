@@ -1,0 +1,54 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+    function myProfile() {
+      return get(/databases/$(database)/documents/profiles/$(request.auth.uid)).data;
+    }
+    function isMaster() {
+      return signedIn() && myProfile().role == 'master';
+    }
+    function isAdminOf(cid) {
+      return signedIn() && myProfile().role == 'admin' && myProfile().companyId == cid;
+    }
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+    function inCompany(cid) {
+      return signedIn() && myProfile().companyId == cid;
+    }
+
+    // One profile doc per person: { email, name, role: 'master'|'admin'|'user', companyId }
+    // The very first 'master' profile is created by hand in the console (bootstrap).
+    // Every profile after that is created through the app by someone who already
+    // has permission (a master, or a company admin adding their own employees).
+    match /profiles/{uid} {
+      allow read: if isSelf(uid) || isMaster() || isAdminOf(resource.data.companyId);
+      allow create: if isMaster() || isAdminOf(request.resource.data.companyId);
+      allow update: if isMaster() || isAdminOf(resource.data.companyId);
+      allow delete: if isMaster() || isAdminOf(resource.data.companyId);
+    }
+
+    // { name } — one doc per business. Only the master creates/renames companies.
+    match /companies/{cid} {
+      allow read: if inCompany(cid) || isMaster();
+      allow write: if isMaster();
+    }
+
+    // { companyId, entries: [...] } — one doc per person's punch history.
+    match /entries/{uid} {
+      allow read: if isSelf(uid) || isAdminOf(resource.data.companyId) || isMaster();
+      allow create: if isSelf(uid) || isAdminOf(request.resource.data.companyId) || isMaster();
+      allow update: if isSelf(uid) || isAdminOf(resource.data.companyId) || isMaster();
+    }
+
+    // { grid: {...} } — one doc per company's shift schedule.
+    match /schedules/{cid} {
+      allow read: if inCompany(cid) || isMaster();
+      allow write: if isAdminOf(cid) || isMaster();
+    }
+  }
+}
