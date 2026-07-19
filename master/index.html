@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Punch — Master Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#181c20">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Punch Master">
+<script src="company-config.js"></script>
+<script type="module" src="firebase-backend.js"></script>
+<style>
+  :root{
+    --ink:#181c20; --panel:#20262c; --panel-raised:#2a3138;
+    --amber:#e8a33d; --red:#d64b3f; --green:#5f9e6e;
+    --text-lo:#8b93a0; --text-hi:#f2f0ea;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink); color:var(--text-hi); font-family:'IBM Plex Sans',sans-serif;
+    min-height:100vh; padding:32px 16px; padding-top:calc(32px + env(safe-area-inset-top));
+  }
+  h1,h2{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.02em; margin:0;}
+  .wrap{max-width:900px;margin:0 auto;}
+  .login-wrap{display:flex;flex-direction:column;align-items:center;gap:24px;padding-top:10vh;}
+  .card{background:var(--panel);border:1px solid #333c44;border-radius:14px;padding:28px;width:100%;max-width:380px;}
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:12px;color:var(--text-lo);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+  input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #3a434c;background:#171b1f;color:var(--text-hi);font-family:'IBM Plex Mono',monospace;font-size:14px;}
+  .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:13px;background:var(--amber);color:#20180a;}
+  .btn.secondary{background:transparent;border:1px solid #3a434c;color:var(--text-hi);}
+  .btn.small{font-size:11px;padding:6px 12px;}
+  .error{color:var(--red);font-size:13px;margin-top:10px;}
+  .banner{color:var(--green);font-size:13px;margin-top:10px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid #2c333a;}
+  .section{margin-bottom:32px;}
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+  .panel-box{background:var(--panel);border:1px solid #2c333a;border-radius:12px;padding:18px;}
+  .company-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2c333a;}
+  .company-row:last-child{border-bottom:none;}
+  .company-row .cid{font-family:'IBM Plex Mono',monospace;color:var(--text-lo);font-size:12px;}
+  .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;}
+  .form-row .field{flex:1;min-width:140px;margin-bottom:0;}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+  th{text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-lo);padding:6px 8px;border-bottom:1px solid #2c333a;}
+  td{padding:8px;border-bottom:1px solid #22282e;font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+function waitForFB(){
+  if (window.FB) return Promise.resolve();
+  return new Promise(resolve => window.addEventListener('fb-ready', resolve, { once: true }));
+}
+function escapeHtml(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+let state = { user: null, loginError: '', banner: '', companies: {}, selectedCompany: null, roster: {} };
+const app = document.getElementById('app');
+
+function render(){
+  if (!state.user) return renderLogin();
+  renderDashboard();
+}
+
+function renderLogin(){
+  app.innerHTML = `
+    <div class="login-wrap">
+      <h1>Punch — Master</h1>
+      <div class="card">
+        <div class="field"><label>Email</label><input id="email" type="email" placeholder="you@yourcompany.com" /></div>
+        <div class="field"><label>Password</label><input id="pw" type="password" /></div>
+        <button class="btn" id="loginBtn" style="width:100%;">Log in</button>
+        ${state.loginError ? `<div class="error">${escapeHtml(state.loginError)}</div>` : ''}
+      </div>
+    </div>
+  `;
+  document.getElementById('loginBtn').onclick = doLogin;
+  document.getElementById('pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+}
+
+async function doLogin(){
+  const email = document.getElementById('email').value.trim();
+  const pw = document.getElementById('pw').value;
+  try{
+    const profile = await window.FB.login(email, pw);
+    if (profile.role !== 'master'){
+      await window.FB.logout();
+      state.loginError = 'This account is not a master admin.';
+      render();
+      return;
+    }
+    state.user = profile;
+    state.loginError = '';
+    await refreshCompanies();
+  }catch(e){
+    console.error(e);
+    state.loginError = 'Incorrect email or password.';
+    render();
+  }
+}
+
+async function logout(){
+  await window.FB.logout();
+  state.user = null;
+  state.selectedCompany = null;
+  render();
+}
+
+async function refreshCompanies(){
+  state.companies = await window.FB.listCompanies();
+  render();
+}
+
+function renderDashboard(){
+  const companyRows = Object.keys(state.companies).length ? Object.keys(state.companies).map(cid => `
+    <div class="company-row">
+      <div>
+        <div>${escapeHtml(state.companies[cid].name)}</div>
+        <div class="cid">${escapeHtml(cid)}</div>
+      </div>
+      <button class="btn secondary small" data-viewco="${escapeHtml(cid)}">View roster</button>
+    </div>
+  `).join('') : `<div style="color:var(--text-lo);">No companies yet — add the first one below.</div>`;
+
+  const rosterHtml = state.selectedCompany ? renderRosterSection() : '';
+
+  app.innerHTML = `
+    <div class="topbar">
+      <h1>Punch — Master</h1>
+      <button class="btn secondary small" id="logoutBtn">Log out</button>
+    </div>
+    ${state.banner ? `<div class="banner">${escapeHtml(state.banner)}</div>` : ''}
+    ${state.loginError ? `<div class="error">${escapeHtml(state.loginError)}</div>` : ''}
+
+    <div class="section">
+      <div class="section-head"><h2>Companies</h2></div>
+      <div class="panel-box">${companyRows}</div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><h2>Add a company</h2></div>
+      <div class="panel-box">
+        <div class="form-row">
+          <div class="field"><label>Company ID (used in site config)</label><input id="newCid" placeholder="e.g. acme-co" /></div>
+          <div class="field"><label>Company name</label><input id="newCname" placeholder="e.g. Acme Co" /></div>
+          <button class="btn" id="addCoBtn">Add company</button>
+        </div>
+      </div>
+    </div>
+
+    ${rosterHtml}
+  `;
+  document.getElementById('logoutBtn').onclick = logout;
+  document.getElementById('addCoBtn').onclick = addCompany;
+  document.querySelectorAll('[data-viewco]').forEach(btn => {
+    btn.onclick = () => viewRoster(btn.dataset.viewco);
+  });
+  bindRosterHandlers();
+}
+
+async function addCompany(){
+  const cid = document.getElementById('newCid').value.trim().toLowerCase().replace(/\s+/g, '-');
+  const name = document.getElementById('newCname').value.trim();
+  if (!cid || !name){
+    state.loginError = 'Enter both a company ID and a name.';
+    render();
+    return;
+  }
+  if (state.companies[cid]){
+    state.loginError = 'That company ID is already in use.';
+    render();
+    return;
+  }
+  state.loginError = '';
+  try{
+    await window.FB.createCompany(cid, name);
+    state.banner = `Added ${name}. Now create its first admin below, and set COMPANY_ID = "${cid}" in that business's company-config.js.`;
+    await refreshCompanies();
+  }catch(e){
+    console.error(e);
+    state.loginError = "Couldn't add the company — try again.";
+    render();
+  }
+}
+
+async function viewRoster(cid){
+  state.selectedCompany = cid;
+  state.roster = await window.FB.listCompanyAccounts(cid);
+  render();
+}
+
+function renderRosterSection(){
+  const cid = state.selectedCompany;
+  const rows = Object.keys(state.roster).length ? Object.keys(state.roster).map(uid => {
+    const a = state.roster[uid];
+    return `<tr><td>${escapeHtml(a.email)}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.role)}</td></tr>`;
+  }).join('') : `<tr><td colspan="3" style="color:var(--text-lo);font-family:'IBM Plex Sans',sans-serif;">No accounts yet for this company.</td></tr>`;
+
+  return `
+    <div class="section">
+      <div class="section-head"><h2>Roster — ${escapeHtml(state.companies[cid] ? state.companies[cid].name : cid)}</h2></div>
+      <div class="panel-box">
+        <div class="form-row">
+          <div class="field"><label>New admin email</label><input id="adminEmail" placeholder="e.g. owner@company.com" /></div>
+          <div class="field"><label>Name</label><input id="adminName" placeholder="e.g. Jane Smith" /></div>
+          <div class="field"><label>Temporary password</label><input id="adminPw" placeholder="at least 6 characters" /></div>
+          <button class="btn" id="addAdminBtn">Add company admin</button>
+        </div>
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Role</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function bindRosterHandlers(){
+  const btn = document.getElementById('addAdminBtn');
+  if (!btn) return;
+  btn.onclick = async () => {
+    const email = document.getElementById('adminEmail').value.trim().toLowerCase();
+    const name = document.getElementById('adminName').value.trim();
+    const pw = document.getElementById('adminPw').value;
+    if (!email || !name || !pw || pw.length < 6){
+      state.loginError = 'Fill in a valid email, name, and a password of at least 6 characters.';
+      render();
+      return;
+    }
+    state.loginError = '';
+    try{
+      await window.FB.createAccount({ email, password: pw, name, role: 'admin', companyId: state.selectedCompany });
+      state.banner = `Added ${name} as an admin for this company.`;
+      state.roster = await window.FB.listCompanyAccounts(state.selectedCompany);
+      render();
+    }catch(e){
+      console.error(e);
+      state.loginError = "Couldn't create that admin — the email may already be in use.";
+      render();
+    }
+  };
+}
+
+let bootHandled = false;
+async function handleInitialAuthState(user){
+  if (bootHandled) return;
+  bootHandled = true;
+  if (user){
+    try{
+      const profile = await window.FB.getProfile(user.uid);
+      if (profile && profile.role === 'master'){
+        state.user = profile;
+        await refreshCompanies();
+        return;
+      } else {
+        await window.FB.logout();
+      }
+    }catch(e){ console.error(e); }
+  }
+  render();
+}
+async function boot(){
+  await waitForFB();
+  window.FB.onAuthChange(handleInitialAuthState);
+}
+boot();
+</script>
+</body>
+</html>
