@@ -4,89 +4,48 @@
 <meta charset="UTF-8">
 <title>Punch — Master Dashboard</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<meta name="theme-color" content="#f5f5f7">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta name="theme-color" content="#181c20">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Punch Master">
 <script src="company-config.js"></script>
 <script type="module" src="firebase-backend.js"></script>
 <style>
   :root{
-    --bg-1:#eef1f6; --bg-2:#e4e9f2;
-    --glass:rgba(255,255,255,0.55); --glass-strong:rgba(255,255,255,0.72);
-    --glass-border:rgba(255,255,255,0.9);
-    --blue:#0071e3; --blue-deep:#0058b8;
-    --red:#e0453b; --green:#1e8e5a;
-    --text-lo:#6e7580; --text-hi:#1d1d1f;
-    --shadow-soft:0 8px 30px rgba(31,41,55,0.08), 0 1px 2px rgba(31,41,55,0.06);
-    --shadow-lift:0 20px 45px rgba(31,41,55,0.14), 0 2px 6px rgba(31,41,55,0.08);
+    --ink:#181c20; --panel:#20262c; --panel-raised:#2a3138;
+    --amber:#e8a33d; --red:#d64b3f; --green:#5f9e6e;
+    --text-lo:#8b93a0; --text-hi:#f2f0ea;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{
-    background:
-      radial-gradient(1100px 600px at 12% -10%, rgba(0,113,227,0.14), transparent 60%),
-      radial-gradient(900px 500px at 100% 0%, rgba(94,175,255,0.16), transparent 55%),
-      linear-gradient(180deg, var(--bg-1), var(--bg-2));
-    background-attachment:fixed;
-    color:var(--text-hi); font-family:'Inter',sans-serif;
+    background:var(--ink); color:var(--text-hi); font-family:'IBM Plex Sans',sans-serif;
     min-height:100vh; padding:32px 16px; padding-top:calc(32px + env(safe-area-inset-top));
-    -webkit-font-smoothing:antialiased;
   }
-  h1,h2{font-family:'Manrope',sans-serif; letter-spacing:-.01em; margin:0; color:var(--text-hi); font-weight:800;}
-  h1{font-size:22px;}
-  h2{font-size:15px; text-transform:uppercase; letter-spacing:.04em; font-weight:700; color:#3a3f47;}
+  h1,h2{font-family:'Oswald',sans-serif; text-transform:uppercase; letter-spacing:.02em; margin:0;}
   .wrap{max-width:900px;margin:0 auto;}
   .login-wrap{display:flex;flex-direction:column;align-items:center;gap:24px;padding-top:10vh;}
-  .card{
-    background:var(--glass-strong);
-    -webkit-backdrop-filter:blur(28px) saturate(180%); backdrop-filter:blur(28px) saturate(180%);
-    border:1px solid var(--glass-border); border-radius:20px; padding:30px; width:100%; max-width:380px;
-    box-shadow:var(--shadow-lift);
-  }
+  .card{background:var(--panel);border:1px solid #333c44;border-radius:14px;padding:28px;width:100%;max-width:380px;}
   .field{margin-bottom:14px;}
-  .field label{display:block;font-size:12px;color:var(--text-lo);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:600;}
-  input,select{
-    width:100%;padding:11px 13px;border-radius:10px;border:1px solid rgba(0,0,0,0.08);
-    background:rgba(255,255,255,0.8);color:var(--text-hi);font-family:'Inter',sans-serif;font-size:14px;
-    transition:border-color .15s ease, box-shadow .15s ease;
-  }
-  input:focus,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 4px rgba(0,113,227,0.15);}
-  .btn{
-    padding:11px 18px;border-radius:10px;border:none;cursor:pointer;font-family:'Inter',sans-serif;font-weight:600;
-    letter-spacing:0;text-transform:none;font-size:14px;
-    background:linear-gradient(180deg, #1a8cff, var(--blue)); color:#fff;
-    box-shadow:0 1px 2px rgba(0,113,227,0.25), 0 6px 16px rgba(0,113,227,0.28);
-    transition:transform .12s ease, box-shadow .12s ease, filter .12s ease;
-  }
-  .btn:hover{filter:brightness(1.05); transform:translateY(-1px);}
-  .btn:active{transform:translateY(0); filter:brightness(0.97);}
-  .btn.secondary{
-    background:rgba(255,255,255,0.6); border:1px solid rgba(0,0,0,0.1); color:var(--text-hi);
-    box-shadow:none; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
-  }
-  .btn.secondary:hover{background:rgba(255,255,255,0.85);}
-  .btn.small{font-size:12px;padding:7px 14px;}
-  .error{color:var(--red);font-size:13px;margin-top:10px;font-weight:500;}
-  .banner{color:var(--green);font-size:13px;margin-top:10px;font-weight:500;}
-  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid rgba(0,0,0,0.06);}
-  .section{margin-bottom:28px;}
+  .field label{display:block;font-size:12px;color:var(--text-lo);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+  input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #3a434c;background:#171b1f;color:var(--text-hi);font-family:'IBM Plex Mono',monospace;font-size:14px;}
+  .btn{padding:10px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.05em;text-transform:uppercase;font-size:13px;background:var(--amber);color:#20180a;}
+  .btn.secondary{background:transparent;border:1px solid #3a434c;color:var(--text-hi);}
+  .btn.small{font-size:11px;padding:6px 12px;}
+  .error{color:var(--red);font-size:13px;margin-top:10px;}
+  .banner{color:var(--green);font-size:13px;margin-top:10px;}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid #2c333a;}
+  .section{margin-bottom:32px;}
   .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
-  .panel-box{
-    background:var(--glass);
-    -webkit-backdrop-filter:blur(24px) saturate(180%); backdrop-filter:blur(24px) saturate(180%);
-    border:1px solid var(--glass-border); border-radius:18px; padding:20px;
-    box-shadow:var(--shadow-soft);
-  }
-  .company-row{display:flex;justify-content:space-between;align-items:center;padding:13px 4px;border-bottom:1px solid rgba(0,0,0,0.06);}
+  .panel-box{background:var(--panel);border:1px solid #2c333a;border-radius:12px;padding:18px;}
+  .company-row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid #2c333a;}
   .company-row:last-child{border-bottom:none;}
-  .company-row .cid{font-family:'Inter',monospace;color:var(--text-lo);font-size:12px;}
+  .company-row .cid{font-family:'IBM Plex Mono',monospace;color:var(--text-lo);font-size:12px;}
   .form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:end;}
   .form-row .field{flex:1;min-width:140px;margin-bottom:0;}
   table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
-  th{text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-lo);padding:8px;border-bottom:1px solid rgba(0,0,0,0.08);}
-  td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,0.05);font-family:'Inter',sans-serif;}
-  tr:last-child td{border-bottom:none;}
+  th{text-align:left;font-size:10px;text-transform:uppercase;color:var(--text-lo);padding:6px 8px;border-bottom:1px solid #2c333a;}
+  td{padding:8px;border-bottom:1px solid #22282e;font-family:'IBM Plex Mono',monospace;}
 </style>
 </head>
 <body>
@@ -250,7 +209,7 @@ function renderRosterSection(){
   const rows = Object.keys(state.roster).length ? Object.keys(state.roster).map(uid => {
     const a = state.roster[uid];
     return `<tr><td>${escapeHtml(a.email)}</td><td>${escapeHtml(a.name)}</td><td>${escapeHtml(a.role)}</td></tr>`;
-  }).join('') : `<tr><td colspan="3" style="color:var(--text-lo);font-family:'Inter',sans-serif;">No accounts yet for this company.</td></tr>`;
+  }).join('') : `<tr><td colspan="3" style="color:var(--text-lo);font-family:'IBM Plex Sans',sans-serif;">No accounts yet for this company.</td></tr>`;
 
   return `
     <div class="section">
