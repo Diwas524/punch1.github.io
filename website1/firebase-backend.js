@@ -56,6 +56,12 @@ const FB = {
   async login(email, password) {
     await persistenceReady;
     const cred = await signInWithEmailAndPassword(auth, email, password);
+    // Force-refresh the ID token before touching Firestore. Right after
+    // sign-in there can be a brief race where Firestore's internal auth
+    // listener hasn't picked up the new token yet, causing a spurious
+    // "Missing or insufficient permissions" on this very first read even
+    // though isSelf(uid) should trivially allow it.
+    await cred.user.getIdToken(true);
     const profile = await profileOf(cred.user.uid);
     if (!profile) {
       // Auth account exists but no Firestore profile doc — treat as invalid.
